@@ -6,6 +6,7 @@ use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GradeController;
 
 // Home route
 Route::get('/', function () {
@@ -42,10 +43,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/courses/{course}/enroll', [CourseController::class, 'showEnrollment'])->name('courses.enroll');
     Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll.store');
     Route::delete('/courses/{course}/students/{student}', [CourseController::class, 'removeStudent'])->name('courses.students.remove');
-    Route::put('/courses/{course}/grades', [CourseController::class, 'updateGrades'])->name('courses.grades.update');
-    Route::delete('/courses/{course}/grades/{student}', [CourseController::class, 'deleteGrade'])->name('courses.grades.destroy');
-    Route::put('/courses/{course}/students/{student}/grade', [CourseController::class, 'updateStudentGrade'])
+
+    // Grade Management Routes
+    Route::put('/courses/{course}/grades/bulk', [CourseController::class, 'updateGrades'])
+        ->name('courses.grades.bulk.update');
+    Route::put('/courses/{course}/student/{student}/grade', [CourseController::class, 'updateStudentGrade'])
         ->name('courses.student.grade.update');
+    Route::delete('/courses/{course}/student/{student}/grade', [CourseController::class, 'deleteGrade'])
+        ->name('courses.student.grade.destroy');
 
     // Admin routes
     Route::prefix('admin')->middleware(['admin'])->group(function () {

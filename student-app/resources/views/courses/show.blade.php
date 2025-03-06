@@ -144,67 +144,115 @@
         </div>
         <div class="card-body">
             @if($course->students->isNotEmpty())
-                <form action="{{ route('courses.grades.update', $course) }}" method="POST">
+                <!-- Bulk Grade Update Form -->
+                <form action="{{ route('courses.grades.bulk.update', ['course' => $course->id]) }}" method="POST">
                     @csrf
                     @method('PUT')
                     <div class="table-responsive">
-                        <table class="table table-bordered" id="enrolledStudentsTable" width="100%" cellspacing="0">
+                        <table class="table table-bordered">
                             <thead>
                                 <tr>
                                     <th>Student ID</th>
                                     <th>Name</th>
-                                    <th>Enrollment Date</th>
-                                    <th>Grade</th>
+                                    <th>Current Grade</th>
+                                    <th>New Grade</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($course->students as $student)
-                                    <tr>
-                                        <td>{{ $student->student_id }}</td>
-                                        <td>{{ $student->name }}</td>
-                                        <td>{{ $student->pivot->enrollment_date->format('M d, Y') }}</td>
-                                        <td>
-                                            <form action="{{ route('courses.student.grade.update', ['course' => $course->id, 'student' => $student->id]) }}" 
-                                                  method="POST" 
-                                                  class="d-inline">
-                                                @csrf
-                                                @method('PUT')
-                                                <div class="input-group input-group-sm">
-                                                    <input type="number" 
-                                                           class="form-control form-control-sm" 
-                                                           name="grade" 
-                                                           value="{{ $student->pivot->grade }}"
-                                            <input type="number" class="form-control form-control-sm" 
-                                                name="grades[{{ $student->id }}]" 
-                                                value="{{ $student->pivot->grade }}"
-                                                min="0" max="100" step="0.01">
-                                        </td>
-                                        <td>
-                                            <form action="{{ route('courses.students.remove', [$course, $student]) }}" 
-                                                method="POST" class="d-inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-danger btn-sm" 
-                                                    onclick="return confirm('Are you sure you want to remove this student from the course?')">
-                                                    <i class="fas fa-user-minus"></i>
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
+                                <tr>
+                                    <td>{{ $student->student_id }}</td>
+                                    <td>{{ $student->name }}</td>
+                                    <td>{{ $student->pivot->grade ?? 'Not graded' }}</td>
+                                    <td>
+                                        <input type="number" 
+                                               name="grades[{{ $student->id }}]" 
+                                               class="form-control"
+                                               value="{{ old('grades.' . $student->id, $student->pivot->grade) }}"
+                                               min="0"
+                                               max="100"
+                                               step="0.01">
+                                    </td>
+                                    <td>
+                                        <!-- Individual Grade Update Button -->
+                                        <button type="button" 
+                                                class="btn btn-primary btn-sm mr-1 update-grade-btn" 
+                                                data-toggle="modal" 
+                                                data-target="#updateGradeModal"
+                                                data-student-id="{{ $student->id }}"
+                                                data-student-name="{{ $student->name }}"
+                                                data-current-grade="{{ $student->pivot->grade }}"
+                                                data-update-url="{{ route('courses.student.grade.update', ['course' => $course->id, 'student' => $student->id]) }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+
+                                        <!-- Delete Grade Form -->
+                                        <form action="{{ route('courses.student.grade.destroy', ['course' => $course->id, 'student' => $student->id]) }}" 
+                                              method="POST" 
+                                              class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" 
+                                                    class="btn btn-danger btn-sm"
+                                                    onclick="return confirm('Are you sure you want to remove this grade?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
                     <div class="mt-3">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="fas fa-save"></i> Update Grades
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Update All Grades
                         </button>
                     </div>
                 </form>
             @else
                 <p class="text-center text-muted my-5">No students enrolled in this course yet.</p>
             @endif
+        </div>
+    </div>
+</div>
+
+<!-- Individual Grade Update Modal -->
+<div class="modal fade" id="updateGradeModal" tabindex="-1" role="dialog" aria-labelledby="updateGradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updateGradeModalLabel">Update Student Grade</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="individualGradeForm" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="studentName">Student</label>
+                        <input type="text" class="form-control" id="studentName" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="grade">Grade</label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="grade" 
+                               name="grade" 
+                               min="0" 
+                               max="100" 
+                               step="0.01" 
+                               required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Grade</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -227,6 +275,54 @@ $(document).ready(function() {
         "columnDefs": [
             { "orderable": false, "targets": [3, 4] }
         ]
+    });
+
+    // Handle update grade button click
+    $('.update-grade-btn').click(function() {
+        var button = $(this);
+        var modal = $('#updateGradeModal');
+        
+        // Set modal values
+        modal.find('#studentName').val(button.data('student-name'));
+        modal.find('#grade').val(button.data('current-grade'));
+        
+        // Update form action URL
+        modal.find('#individualGradeForm').attr('action', button.data('update-url'));
+    });
+
+    // Handle form submission
+    $('#individualGradeForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        $.ajax({
+            url: $(this).attr('action'),
+            method: 'POST',
+            data: $(this).serialize(),
+            success: function(response) {
+                // Close modal
+                $('#updateGradeModal').modal('hide');
+                
+                // Show success message
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Grade updated successfully',
+                    icon: 'success',
+                    confirmButtonText: 'OK'
+                }).then((result) => {
+                    // Reload page to show updated data
+                    location.reload();
+                });
+            },
+            error: function(xhr) {
+                // Show error message
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Failed to update grade',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                });
+            }
+        });
     });
 });
 </script>

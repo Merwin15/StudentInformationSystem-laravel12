@@ -167,10 +167,12 @@ class CourseController extends Controller
      */
     public function deleteGrade(Course $course, Student $student)
     {
-        // Find the pivot record and update the grade to null
-        $course->students()->updateExistingPivot($student->id, ['grade' => null]);
-
-        return redirect()->back()->with('success', 'Grade has been removed successfully.');
+        try {
+            $course->students()->updateExistingPivot($student->id, ['grade' => null]);
+            return redirect()->back()->with('success', 'Grade has been removed successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error removing grade: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -178,29 +180,46 @@ class CourseController extends Controller
      */
     public function updateGrades(Request $request, Course $course)
     {
-        $validated = $request->validate([
-            'grades.*' => 'nullable|numeric|min:0|max:100'
-        ]);
-
-        foreach ($request->grades ?? [] as $studentId => $grade) {
-            $course->students()->updateExistingPivot($studentId, [
-                'grade' => $grade
+        try {
+            $validated = $request->validate([
+                'grades' => 'required|array',
+                'grades.*' => 'nullable|numeric|min:0|max:100'
             ]);
-        }
 
-        return redirect()->back()->with('success', 'Grades have been updated successfully.');
+            foreach ($validated['grades'] as $studentId => $grade) {
+                $course->students()->updateExistingPivot($studentId, [
+                    'grade' => $grade
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Grades have been updated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error updating grades: ' . $e->getMessage());
+        }
     }
 
     public function updateStudentGrade(Request $request, Course $course, Student $student)
     {
-        $validated = $request->validate([
-            'grade' => 'nullable|numeric|min:0|max:100'
-        ]);
+        try {
+            $validated = $request->validate([
+                'grade' => 'required|numeric|min:0|max:100'
+            ]);
 
-        $course->students()->updateExistingPivot($student->id, [
-            'grade' => $validated['grade']
-        ]);
+            $course->students()->updateExistingPivot($student->id, [
+                'grade' => $validated['grade']
+            ]);
 
-        return redirect()->back()->with('success', 'Grade updated successfully.');
+            if ($request->ajax()) {
+                return response()->json(['success' => true, 'message' => 'Grade updated successfully']);
+            }
+
+            return redirect()->back()->with('success', 'Grade updated successfully');
+        } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Error updating grade'], 500);
+            }
+
+            return redirect()->back()->with('error', 'Error updating grade: ' . $e->getMessage());
+        }
     }
 } 

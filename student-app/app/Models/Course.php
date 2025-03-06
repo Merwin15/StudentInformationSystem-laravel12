@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Course extends Model
 {
@@ -21,7 +23,7 @@ class Course extends Model
     /**
      * Get the teacher that teaches the course.
      */
-    public function teacher()
+    public function teacher(): BelongsTo
     {
         return $this->belongsTo(Teacher::class);
     }
@@ -29,22 +31,19 @@ class Course extends Model
     /**
      * Get the students enrolled in the course.
      */
-    public function students()
+    public function students(): BelongsToMany
     {
-        return $this->belongsToMany(Student::class, 'course_student')
-            ->withPivot('enrollment_date', 'grade')
-            ->withTimestamps()
-            ->using(CourseStudent::class);
+        return $this->belongsToMany(Student::class)
+                    ->withPivot('enrollment_date', 'grade')
+                    ->withTimestamps();
     }
 
     /**
      * Check if a student is enrolled in the course.
      */
-    public function hasStudent($studentId)
+    public function hasStudent($studentId): bool
     {
-        return $this->students()
-            ->wherePivot('student_id', $studentId)
-            ->exists();
+        return $this->students()->where('student_id', $studentId)->exists();
     }
 
     /**
